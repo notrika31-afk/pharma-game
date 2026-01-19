@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pharma-Ultimate: מערכת למידה</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --success: #27ae60;
+            --error: #c0392b;
+            --bg: #f4f7f6;
+            --card: #ffffff;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: #333;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+            background: var(--card);
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            overflow: hidden;
+            min-height: 600px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- Header --- */
+        header {
+            background: var(--primary);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+        
+        .header-title { margin: 0; font-size: 1.8rem; }
+        .header-subtitle { opacity: 0.8; font-size: 0.9rem; margin-top: 5px; }
+        
+        /* Stats Bar (Timer/Score) */
+        .status-bar {
+            background: #ecf0f1;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            font-weight: bold;
+            border-bottom: 1px solid #ddd;
+            color: var(--primary);
+        }
+
+        /* --- Screens --- */
+        .screen {
+            padding: 30px;
+            flex: 1;
+            display: none; /* Hidden by default */
+            flex-direction: column;
+        }
+        
+        .screen.active { display: flex; }
+
+        /* Menu Buttons */
+        .menu-btn {
+            background: white;
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 10px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            font-weight: bold;
+        }
+
+        .menu-btn:hover {
+            background: var(--primary);
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .menu-btn.exam { border-color: var(--error); color: var(--error); }
+        .menu-btn.exam:hover { background: var(--error); color: white; }
+
+        /* Question Styles */
+        .q-card { margin-bottom: 20px; }
+        .q-text { font-size: 1.3rem; font-weight: 600; margin-bottom: 20px; line-height: 1.4; }
+        
+        .options-grid { display: grid; gap: 10px; }
+        
+        .opt-btn {
+            background: white;
+            border: 2px solid #bdc3c7;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: right;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: 0.2s;
+            position: relative;
+        }
+
+        .opt-btn:hover { background: #f0f3f4; border-color: var(--accent); }
+
+        /* Practice Mode Specifics */
+        .practice-feedback {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            background: #fff3cd;
+            border-right: 5px solid #ffc107;
+            display: none;
+            animation: fadeIn 0.3s;
+        }
+
+        .opt-btn.correct { background: #d4efdf; border-color: var(--success); color: var(--success); font-weight: bold; }
+        .opt-btn.wrong { background: #fadbd8; border-color: var(--error); color: var(--error); opacity: 0.7; }
+        
+        /* Exam Mode Selection */
+        .opt-btn.selected { background: var(--primary); color: white; border-color: var(--primary); }
+
+        /* Navigation */
+        .nav-area {
+            margin-top: auto;
+            display: flex;
+            justify-content: space-between;
+            padding-top: 20px;
+        }
+
+        .nav-btn {
+            padding: 10px 25px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            background: var(--primary);
+            color: white;
+        }
+        
+        .nav-btn.secondary { background: #95a5a6; }
+        .nav-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* Results */
+        .results-box { text-align: center; }
+        .score-display { font-size: 4rem; font-weight: bold; color: var(--primary); margin: 20px 0; }
+        .review-list { text-align: right; margin-top: 20px; max-height: 400px; overflow-y: auto; }
+        .review-item { border-bottom: 1px solid #eee; padding: 10px; }
+        .review-item.bad { background: #fff5f5; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1 class="header-title">Pharma-Ultimate</h1>
+        <div class="header-subtitle">מערכת תרגול וסימולציה בפרמקולוגיה</div>
+    </header>
+
+    <div id="screen-menu" class="screen active">
+        <h2 style="text-align:center; color:var(--primary)">בחר מצב למידה:</h2>
+        
+        <button class="menu-btn" onclick="startPractice()">
+            <span>♾️</span>
+            <div>
+                <div>מצב תרגול רציף (Practice)</div>
+                <small style="font-weight:normal; opacity:0.8">משוב מיידי, שאלות לא נגמרות</small>
+            </div>
+        </button>
+
+        <button class="menu-btn exam" onclick="startExam()">
+            <span>⏱️</span>
+            <div>
+                <div>סימולציית מבחן (Exam)</div>
+                <small style="font-weight:normal; opacity:0.8">45 שאלות, טיימר רץ, ציון בסוף</small>
+            </div>
+        </button>
+    </div>
+
+    <div id="screen-practice" class="screen">
+        <div class="status-bar">
+            <span>מצב תרגול</span>
+            <span>שאלה <span id="prac-count">1</span></span>
+        </div>
+        <div id="prac-area">
+            </div>
+        <div class="nav-area">
+            <button class="nav-btn secondary" onclick="goHome()">תפריט ראשי</button>
+            <button class="nav-btn" id="prac-next-btn" onclick="nextPracticeQ()" style="display:none">השאלה הבאה ➜</button>
+        </div>
+    </div>
+
+    <div id="screen-exam" class="screen">
+        <div class="status-bar">
+            <span id="exam-timer">00:00</span>
+            <span>שאלה <span id="exam-q-num">1</span> / 45</span>
+        </div>
+        <div id="exam-area">
+            </div>
+        <div class="nav-area">
+            <button class="nav-btn secondary" id="exam-prev" onclick="prevExamQ()">הקודם</button>
+            <button class="nav-btn" id="exam-next" onclick="nextExamQ()">הבא</button>
+            <button class="nav-btn" id="exam-finish" onclick="finishExam()" style="background:var(--success); display:none">הגש מבחן 🏁</button>
+        </div>
+    </div>
+
+    <div id="screen-results" class="screen">
+        <div class="results-box">
+            <h2>תוצאות המבחן</h2>
+            <div class="score-display" id="final-score">0</div>
+            <p id="score-msg"></p>
+            <button class="nav-btn" onclick="goHome()">חזור לתפריט</button>
+        </div>
+        <hr>
+        <h3>פירוט טעויות ותשובות:</h3>
+        <div class="review-list" id="review-container"></div>
+    </div>
+</div>
+
+<script>
+    /* --- DATABASE --- */
+    const questionBank = [
+        // HTN & Cardiac
+        { q: "מטופל אסמטי מאובחן עם יתר לחץ דם. איזו תרופה אסורה לשימוש (Contraindication)?", a: "Propranolol", opts: ["Amlodipine", "Hydrochlorothiazide", "Losartan"], expl: "Propranolol חוסם רצפטורי B2 בריאות וגורם לכיווץ סמפונות." },
+        { q: "מהי תופעת הלוואי השכיחה ביותר של ACE Inhibitors (כגון Captopril)?", a: "שיעול יבש", opts: ["בצקת בקרסוליים", "דופק מהיר", "עצירות"], expl: "נגרם עקב הצטברות ברדיקינין בריאות." },
+        { q: "מטופל נוטל Prazosin. מתי מומלץ ליטול את המנה הראשונה?", a: "לפני השינה", opts: ["בבוקר עם האוכל", "שעה לפני פעילות", "מיד בקימה"], expl: "למניעת עילפון (First Dose Effect) כתוצאה מנפילת לחץ דם בעמידה." },
+        { q: "איזו תרופה גורמת לנפיחות בחניכיים (Gingival Hyperplasia)?", a: "Nifedipine", opts: ["Furosemide", "Metoprolol", "Captopril"], expl: "אופייני לחוסמי תעלות סידן (וכן לפניטואין)." },
+        { q: "מהו הסימן המוקדם להרעלת Digoxin?", a: "הפרעות בראייה (הילות) ובחילות", opts: ["שיעול דמי", "עצירות", "כאבי שרירים"], expl: "ראיית הילות צהובות/ירוקות היא סימן דגל להרעלה." },
+        { q: "איזה אלקטרוליט יש לנטר בטיפול ב-Furosemide (Lasix)?", a: "אשלגן (סכנת היפוקלמיה)", opts: ["נתרן בלבד", "סידן (סכנת היפרקלצמיה)", "ברזל"], expl: "משתני לולאה גורמים לאיבוד משמעותי של אשלגן בשתן." },
+        { q: "כיצד פועל Spironolactone?", a: "חוסם רצפטור לאלדוסטרון", opts: ["חוסם תעלות נתרן", "מעכב ACE", "מרחיב כלי דם ישיר"], expl: "משתן משמר אשלגן, אנטגוניסט לאלדוסטרון." },
+        { q: "מהי הסכנה בשימוש ב-Amiodarone?", a: "פיברוזיס ריאתי (Pulmonary Fibrosis)", opts: ["תסחיף ריאתי", "אסתמה", "דלקת ריאות"], expl: "תופעת לוואי קשה ומסכנת חיים בריאות." },
+        
+        // Antibiotics
+        { q: "מהי תופעת Red Man Syndrome?", a: "שחרור היסטמין בגלל מתן מהיר של Vancomycin", opts: ["אלרגיה לפניצילין", "תגובה לטטרציקלין", "זיהום משני"], expl: "נגרמת מהזרקה מהירה מדי של ונקומיצין." },
+        { q: "למי אסור לתת Tetracycline?", a: "ילדים מתחת לגיל 8 ונשים בהריון", opts: ["חולי סוכרת", "קשישים", "רגישים לפניצילין"], expl: "שוקע בעצמות וצובע שיניים באופן בלתי הפיך." },
+        { q: "מהי הרעילות העיקרית של Gentamicin?", a: "כליות (Nephro) ואוזניים (Oto)", opts: ["כבד ולב", "קיבה ווושט", "עור ועיניים"], expl: "אמינוגליקוזידים פוגעים בכליה ובשמיעה." },
+        { q: "מטופל המקבל Metronidazole שותה אלכוהול. מה יקרה?", a: "בחילות והקאות קשות (Disulfiram Effect)", opts: ["לא יקרה כלום", "ביטול האנטיביוטיקה", "ישנוניות"], expl: "התרופה מעכבת פירוק אלכוהול וגורמת להצטברות רעלן." },
+        { q: "סכנה בשימוש ב-Chloramphenicol בתינוקות?", a: "Gray Baby Syndrome", opts: ["Red Man Syndrome", "מוות בעריסה", "אי ספיקת כבד"], expl: "קורס מערכות בגלל חוסר יכולת לפרק את התרופה." },
+        { q: "איזו תרופה צובעת שתן בכתום/אדום?", a: "Rifampin", opts: ["Penicillin", "Gentamicin", "Vancomycin"], expl: "לא מסוכן, אך מבהיל את המטופל." },
+        { q: "סכנה בשימוש ב-Ciprofloxacin?", a: "קרע בגיד אכילס", opts: ["שיעול", "עצירות", "נשירת שיער"], expl: "קווינולונים מחלישים גידים." },
+        { q: "האם מותר לתת Cephalosporins לרגישים לפניצילין?", a: "אסור, יש רגישות צולבת (Cross Sensitivity)", opts: ["מותר חופשי", "רק דור 3", "רק בכדורים"], expl: "יש דמיון במבנה הכימי (טבעת בטא-לקטם)." },
+
+        // Diabetes & Epilepsy
+        { q: "מתי מזריקים Insulin Lispro?", a: "ממש עם האוכל (0-15 דק')", opts: ["שעה לפני", "לפני השינה", "בצום"], expl: "זהו אינסולין מהיר מאוד." },
+        { q: "סכנה ב-Metformin ואי ספיקת כליות?", a: "Lactic Acidosis", opts: ["היפוגליקמיה", "עלייה במשקל", "יתר לחץ דם"], expl: "חמצת לקטית היא תופעה נדירה אך קטלנית." },
+        { q: "תופעת לוואי קוסמטית של Phenytoin?", a: "שיעור יתר ועיבוי חניכיים", opts: ["התקרחות", "אקנה", "ציפורניים שבירות"], expl: "היפרפלזיה של חניכיים והירסוטיזם." },
+        { q: "תרופה לאפילפסיה שאסורה בהריון?", a: "Valproic Acid", opts: ["Insulin", "Paracetamol", "Penicillin"], expl: "טרטוגנית מאוד, גורמת למומים בעובר." },
+        { q: "טיפול ב-Status Epilepticus?", a: "Diazepam (Valium) IV", opts: ["Phenytoin PO", "Carbamazepine", "Ethosuximide"], expl: "נדרשת תרופה מהירה לווריד לעצירת הפרכוס." },
+        
+        // General
+        { q: "מהו Antidote להרעלת אופיואידים?", a: "Naloxone", opts: ["Atropine", "Flumazenil", "Vitamin K"], expl: "חוסם את הרצפטור לאופיום." },
+        { q: "מהו Antidote לקומדין (Warfarin)?", a: "Vitamin K", opts: ["Protamine Sulfate", "Calcium", "Iron"], expl: "קומדין מעכב פקטורים תלויי ויטמין K." },
+        { q: "מהו Antidote להפרין?", a: "Protamine Sulfate", opts: ["Vitamin K", "Aspirin", "Insulin"], expl: "נקשר להפרין ומנטרל אותו." },
+        { q: "מדוע אסור להפסיק סטרואידים בבת אחת?", a: "חשש לאי ספיקת אדרנל (Addisonian Crisis)", opts: ["הכאב יחזור", "השמנה", "התייבשות"], expl: "הגוף מפסיק לייצר סטרואידים לבד בזמן הטיפול." },
+        { q: "תרופה עם אינדקס תרפויטי צר (Narrow Therapeutic Index)?", a: "ההבדל בין מינון יעיל לרעיל קטן", opts: ["עובדת מהר", "זולה", "בטוחה לשימוש"], expl: "דורש ניטור רמות בדם (כמו דיגוקסין)." },
+        { q: "טיפול בהלם אנפילקטי?", a: "Adrenaline (Epinephrine)", opts: ["Steroids", "Antihistamines", "Antibiotics"], expl: "מציל חיים מיידית." },
+        { q: "איזה סוג אינסולין הוא 'בזאלי' (ללא פיק)?", a: "Glargine (Lantus)", opts: ["Regular", "NPH", "Lispro"], expl: "פועל ל-24 שעות בצורה יציבה." },
+        { q: "מה עושה Acarbose?", a: "מעכבת פירוק פחמימות במעי", opts: ["מגבירה אינסולין", "מוציאה סוכר בשתן", "חוסמת תיאבון"], expl: "מונעת ספיגת סוכר מהמזון." },
+        { q: "טיפול בסיסי להיפוגליקמיה בחולה בהכרה?", a: "סוכר זמין (מיץ/סוכרייה) דרך הפה", opts: ["אינסולין", "גלוקגון בזריקה", "המתנה"], expl: "הדרך המהירה והבטוחה ביותר." },
+        { q: "תרופה לפרכוסי ניתוק (Absence)?", a: "Ethosuximide", opts: ["Phenytoin", "Carbamazepine", "Phenobarbital"], expl: "התוויה ספציפית ל-Petit Mal." }
+    ];
+
+    /* --- VARIABLES --- */
+    let practicePool = [];
+    let currentPracIndex = 0;
+    
+    let examList = [];
+    let examAnswers = [];
+    let currentExamIndex = 0;
+    let examTimerInt;
+    let examSeconds = 0;
+
+    /* --- UTILS --- */
+    function shuffle(array) {
+        return array.sort(() => 0.5 - Math.random());
+    }
+
+    function switchScreen(id) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+    }
+
+    function goHome() {
+        clearInterval(examTimerInt);
+        switchScreen('screen-menu');
+    }
+
+    /* --- PRACTICE MODE LOGIC --- */
+    function startPractice() {
+        // Create a shuffled copy containing ALL questions
+        practicePool = shuffle([...questionBank]);
+        // Duplicate questions based on randomnessopts
+        practicePool.forEach(q => {
+            q.pracOpts = shuffle([q.a, ...q.opts]);
+        });
+        
+        currentPracIndex = 0;
+        switchScreen('screen-practice');
+        loadPracticeQ();
+    }
+
+    function loadPracticeQ() {
+        // Infinite Loop Logic: If we reached end, reshuffle and start over
+        if (currentPracIndex >= practicePool.length) {
+            practicePool = shuffle([...questionBank]);
+            practicePool.forEach(q => q.pracOpts = shuffle([q.a, ...q.opts]));
+            currentPracIndex = 0;
+        }
+
+        const q = practicePool[currentPracIndex];
+        document.getElementById('prac-count').innerText = currentPracIndex + 1;
+        
+        const area = document.getElementById('prac-area');
+        area.innerHTML = `
+            <div class="q-card">
+                <div class="q-text">${q.q}</div>
+                <div class="options-grid">
+                    ${q.pracOpts.map(opt => `<button class="opt-btn" onclick="checkPractice(this, '${opt}', '${q.a}')">${opt}</button>`).join('')}
+                </div>
+                <div class="practice-feedback" id="prac-fb">
+                    <strong>${q.expl}</strong>
+                </div>
+            </div>
+        `;
+
+        document.getElementById('prac-next-btn').style.display = 'none';
+    }
+
+    function checkPractice(btn, selected, correct) {
+        // Disable all buttons
+        const parent = btn.parentElement;
+        const allBtns = parent.querySelectorAll('.opt-btn');
+        allBtns.forEach(b => b.disabled = true);
+
+        const feedback = document.getElementById('prac-fb');
+        feedback.style.display = 'block';
+
+        if (selected === correct) {
+            btn.classList.add('correct');
+            feedback.style.borderRightColor = 'var(--success)';
+            feedback.innerHTML = `<div style="color:var(--success); font-weight:bold; margin-bottom:5px;">✅ תשובה נכונה!</div>` + feedback.innerHTML;
+        } else {
+            btn.classList.add('wrong');
+            feedback.style.borderRightColor = 'var(--error)';
+            feedback.innerHTML = `<div style="color:var(--error); font-weight:bold; margin-bottom:5px;">❌ טעות. התשובה היא: ${correct}</div>` + feedback.innerHTML;
+            
+            // Highlight correct answer
+            allBtns.forEach(b => {
+                if (b.innerText === correct) b.classList.add('correct');
+            });
+        }
+
+        document.getElementById('prac-next-btn').style.display = 'block';
+    }
+
+    function nextPracticeQ() {
+        currentPracIndex++;
+        loadPracticeQ();
+    }
+
+
+    /* --- EXAM MODE LOGIC --- */
+    function startExam() {
+        // Pick 45 random questions (or less if bank is smaller, utilizing duplicates if needed to reach 45 not recommended, so we take max avail)
+        // Since database is smaller in this code snippet, we'll take ALL or repeat. 
+        // For the sake of the snippet, we'll use the full bank shuffled.
+        
+        let pool = shuffle([...questionBank]);
+        // Note: Real PDF has hundreds, this snippet has ~30. We will loop to fill 45 for demo or just use pool length.
+        // Let's create a 45 q exam by duplicating pool if needed for the simulation feel.
+        while (pool.length < 45) {
+            pool = pool.concat(shuffle([...questionBank]));
+        }
+        examList = pool.slice(0, 45);
+        
+        // Prepare options
+        examList.forEach(q => {
+            q.examOpts = shuffle([q.a, ...q.opts]);
+        });
+
+        examAnswers = new Array(examList.length).fill(null);
+        currentExamIndex = 0;
+        examSeconds = 0;
+
+        // Timer
+        clearInterval(examTimerInt);
+        examTimerInt = setInterval(() => {
+            examSeconds++;
+            const m = Math.floor(examSeconds / 60).toString().padStart(2,'0');
+            const s = (examSeconds % 60).toString().padStart(2,'0');
+            document.getElementById('exam-timer').innerText = `${m}:${s}`;
+        }, 1000);
+
+        switchScreen('screen-exam');
+        loadExamQ();
+    }
+
+    function loadExamQ() {
+        const q = examList[currentExamIndex];
+        document.getElementById('exam-q-num').innerText = currentExamIndex + 1;
+        
+        const area = document.getElementById('exam-area');
+        const savedAns = examAnswers[currentExamIndex];
+
+        area.innerHTML = `
+            <div class="q-card">
+                <div class="q-text">${q.q}</div>
+                <div class="options-grid">
+                    ${q.examOpts.map(opt => `
+                        <button class="opt-btn ${savedAns === opt ? 'selected' : ''}" 
+                                onclick="selectExamAns(this, '${opt}')">${opt}</button>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+
+        // Nav buttons
+        document.getElementById('exam-prev').disabled = currentExamIndex === 0;
+        
+        if (currentExamIndex === examList.length - 1) {
+            document.getElementById('exam-next').style.display = 'none';
+            document.getElementById('exam-finish').style.display = 'block';
+        } else {
+            document.getElementById('exam-next').style.display = 'block';
+            document.getElementById('exam-finish').style.display = 'none';
+        }
+    }
+
+    function selectExamAns(btn, ans) {
+        // UI update
+        const parent = btn.parentElement;
+        parent.querySelectorAll('.opt-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        
+        // Save
+        examAnswers[currentExamIndex] = ans;
+    }
+
+    function nextExamQ() {
+        if (currentExamIndex < examList.length - 1) {
+            currentExamIndex++;
+            loadExamQ();
+        }
+    }
+
+    function prevExamQ() {
+        if (currentExamIndex > 0) {
+            currentExamIndex--;
+            loadExamQ();
+        }
+    }
+
+    function finishExam() {
+        clearInterval(examTimerInt);
+        
+        let correctCount = 0;
+        let html = '';
+
+        examList.forEach((q, i) => {
+            const userAns = examAnswers[i];
+            const isCorrect = userAns === q.a;
+            if (isCorrect) correctCount++;
+
+            html += `
+                <div class="review-item ${isCorrect ? '' : 'bad'}">
+                    <div style="font-weight:bold; color:${isCorrect ? 'var(--success)' : 'var(--error)'}">
+                        שאלה ${i+1}: ${isCorrect ? 'נכון' : 'שגוי'}
+                    </div>
+                    <div style="margin:5px 0;">${q.q}</div>
+                    <div style="font-size:0.9rem">
+                        תשובתך: <b>${userAns || '---'}</b> <br>
+                        <span style="color:var(--success)">התשובה הנכונה: <b>${q.a}</b></span>
+                    </div>
+                    <div style="margin-top:5px; background:#fff8e1; padding:5px; font-size:0.85rem;">
+                        💡 ${q.expl}
+                    </div>
+                </div>
+            `;
+        });
+
+        const score = Math.round((correctCount / examList.length) * 100);
+        document.getElementById('final-score').innerText = score;
+        
+        let msg = "";
+        if (score > 90) msg = "אלוף! מוכן למבחן לגמרי 🏆";
+        else if (score > 70) msg = "עבודה טובה, עוד קצת ליטוש 👌";
+        else msg = "כדאי לחזור על החומר שוב 📚";
+        document.getElementById('score-msg').innerText = msg;
+
+        document.getElementById('review-container').innerHTML = html;
+        switchScreen('screen-results');
+    }
+
+</script>
+
+</body>
+</html>
